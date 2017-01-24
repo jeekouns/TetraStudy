@@ -1,0 +1,110 @@
+This is a modified version of osmo-tetra (original README contents are a
+few lines below).
+
+This version is patched to work with telive - a program for live listening
+of tetra traffic and recording it, displaying network data etc. 
+
+The most important changes are:
+- support parsing of SDS messages (text messages similar to SMS), including some location protocols
+- support parsing of D-SETUP, D-RELEASE, D-NWRK-BROADCAST
+- sending of data and voice traffic via UDP (for consumption with telive or some other program)
+- incorporate float_to_bits into tetra-rx
+- implement a crude AFC into tetra-rx and float_to_bits (enables the signal to be less precisely tuned)
+
+For more info about osmo-tetra-sq5bpf and telive:
+
+Main docs (read this first!): https://github.com/sq5bpf/telive/raw/master/telive_doc.pdf 
+Telive repository: https://github.com/sq5bpf/telive
+Modified osmo-tetra: https://github.com/sq5bpf/osmo-tetra-sq5bpf
+Script to automatically download/compile/install the acelp codec: https://github.com/sq5bpf/install-tetra-codec
+Forum thread: http://forums.radioreference.com/voice-control-channel-decoding-software/302347-tetra-decoding.html
+Tutorial: http://www.rtl-sdr.com/rtl-sdr-tutorial-listening-tetra-radio-channels/
+
+What follows is the original content of the README file:
+
+TETRA MAC/PHY layer experimentation code
+(C) 2010-2011 by Harald Welte <laforge@gnumonks.org>
+======================================================================
+
+This code aims to implement the sending and receiving part of the
+TETRA MAC/PHY layer.
+
+If you read the ETSI EN 300 392-2 (TETRA V+D Air Interface), you will
+find this code implementing the parts between the MAC-blocks (called
+type-1 bits) and the bits that go to the DQPSK-modulator (type-5 bits).
+
+It is most useful to look at Figure 8.5, 8.6, 9.3 and 19.12 in conjunction
+with this program.
+
+You will need libosmocore (http://bb.osmocom.org/trac/wiki/libosmocore) to link.
+
+
+== Demodulator ==
+
+src/demod/python/cpsk.py
+	* contains a gnuradio based pi4/DQPSK demodulator, courtesy of KA1RBI
+src/demod/python/tetra-demod.py
+	* call demodulator on a 'cfile' containing complex baseband samples
+src/demod/python/usrp1-tetra_demod.py
+	* use demodulator in realtime with a USRP1 SDR
+src/demod/python/usrp2-tetra_demod.py
+	* use demodulator in realtime with a USRP2 SDR
+
+The output of the demodulator is a file containing one float value for each symbol,
+containing the phase shift (in units of pi/4) relative to the previous symbol.
+
+You can use the "float_to_bits" program to convert the float values to unpacked
+bits, i.e. 1-bit-per-byte
+
+
+== PHY/MAC layer ==
+
+=== library code ===
+
+Specifically, it implements:
+lower_mac/crc_simple.[ch]
+	* CRC16-CCITT (currently defunct/broken as we need it for
+	  non-octet-aligned bitfields)
+lower_mac/tetra_conv_enc.[ch]
+	* 16-state Rate-Compatible Punctured Convolutional (RCPC) coder
+lower_mac/tetra_interleave.[ch]
+	* Block interleaving (over a single block only)
+lower_mac/tetra_rm3014.[ch]
+	* (30, 14) Reed-Muller code for the ACCH (broadcast block of
+	  each downlink burst)
+lower_mac/tetra_scramb.[ch]
+	* Scrambling
+lower_mac/viterbi*.[ch]
+	* Convolutional decoder for signalling and voice channels
+phy/tetra_burst.[ch]
+	* Routines to encode continuous normal and sync bursts
+phy/tetra_burst_sync.[ch]
+
+
+=== Receiver Program ===
+
+The main receiver program 'tetra-rx' expects an input file containing a
+stream of unpacked bits, i.e. 1-bit-per-byte.
+
+
+=== Transmitter Program ===
+
+The main program conv_enc_test.c generates a single continuous downlinc sync
+burst (SB), contining:
+	* a SYNC-PDU as block 1
+	* a ACCESS-ASSIGN PDU as broadcast block
+	* a SYSINFO-PDU as block 2
+
+Scrambling is set to 0 (no scrambling) for all elements of the burst.
+
+It does not actually modulate and/or transmit yet.
+
+
+== Quick example ==
+
+	# assuming you have generated a file samples.cfile at a sample rate of
+	# 195.312kHz (100MHz/512 == USRP2 at decimation 512)
+	src/demod/python/tetra-demod.py -i /tmp/samples.cfile -o /tmp/out.float -s 195312 -c 0
+	src/float_to_bits /tmp/out.float /tmp/out.bits
+	src/tetra-rx /tmp/out.bits
+
