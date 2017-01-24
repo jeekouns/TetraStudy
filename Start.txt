@@ -1,0 +1,28 @@
+전반적인 내용 site : http://www.rtl-sdr.com/rtl-sdr-tutorial-listening-tetra-radio-channels/
+
+전반적인 흐름
+1. ./src/receiver1
+여기서 아래 명령어를 실행
+./demod/GR_DIR/simdemod2.py -o /dev/stdout -i $FIFO |
+./tetra-rx -i /dev/stdin
+
+$FIFO : GNU-Radio로 수신하는 TETRA 신호
+simdemod2.py로 $FIFO를 받아서 처리, /dev/stdout=표준출력으로 내보내고
+tetra-rx는 /dev/stdin=표준입력으로 받는다
+
+2. simdemod2.py
+여기서
+cqpsk.cqpsk_demod(
+			samples_per_symbol, 
+			excess_bw,
+			costas_alpha,
+			gain_mu, 
+			mu, 
+			omega_relative_limit,
+			log,
+			verbose)
+가 핵심
+
+용어정리
+1. AFC : Automatic frequency control
+https://en.wikipedia.org/wiki/Automatic_frequency_control

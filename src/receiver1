@@ -5,7 +5,11 @@
 #20151102: see if the fifo exists, and if it is really a fifo --sq5bpf
 
 # you can also set GR_VERSION yourself outside of this script --sq5bpf
+#GNU Radio 버전을 확인
+
 [ "$GR_VERSION" ] || GR_VERSION=`gnuradio-config-info -v|cut -d . -f 1-2|tr -d v`
+
+#GNU Radio 버전에 따라 python 버전을 선택?
 case $GR_VERSION in
 	3.6) 
 		GR_DIR=python-3.6
@@ -22,15 +26,21 @@ case $GR_VERSION in
 		;;
 esac
 
+#TETRA포트는 7379
 export TETRA_HACK_PORT=7379 #i might as well have made this a command line parameter, oh well :)
 #export TETRA_HACK_IP=127.0.0.1 #you can send to another host too
+
+#뭐지?
 export TETRA_HACK_RXID=$1
+
+#출력하는 파일
 FIFO=/tmp/fifo$1
 
 
 
 #idiot-proofing checks, see if the fifo exists etc. comment out if it bothers you
-if [ -p $FIFO  ]; then
+#-p : 파일이 존재하고 FIFO이면
+ if [ -p $FIFO  ]; then
 	#fifo exists, do nothing
 	#we could try to read a bit from it, and throw an error if it's possible
 	#because it means that someone executed the receiver too early, but
@@ -38,6 +48,7 @@ if [ -p $FIFO  ]; then
 	:
 else
 	#maybe it's something else?
+#-e : 파일이 존재하면 -> FIFO가 아니면
 	if [ -e $FIFO ]; then
 		echo "########################################################################"
 		echo
@@ -49,9 +60,13 @@ else
 		echo "########################################################################"
 		exit 1
 	else
+
+#FIFO가 존재 안한다면 FIFO(/tmp/fifo$1)을 만들라!!
 		mkfifo $FIFO
-	fi
-fi
+	fi #if문 끝
+fi #if문 끝
+
+#사용자별 프로세스와 사용 파일 수의 제한을 최대 코어 파일 사이즈 / unlimited로 바꾸라
 ulimit -c unlimited
 #demod/${GR_DIR}/simdemod2.py -o /dev/stdout -i $FIFO | ./float_to_bits /dev/stdin /dev/stdout | ./tetra-rx /dev/stdin 
 
@@ -59,5 +74,12 @@ ulimit -c unlimited
 # -r turns on fragment reassembly, -s tries to dump unknown SDS protocols as text
 #
 #if you have problems with the receiver, then try to remove -a
-demod/${GR_DIR}/simdemod2.py -o /dev/stdout -i $FIFO | ./tetra-rx -a -r -s -i /dev/stdin 
 
+# simdemod2.py -o : output /dev/stdout=표준출력으로 내보내기
+# simdemod2.py -i : input $FIFO를 받아서
+# tetra-rx -a : pseudo-afc, 의사 auto frequency control 켜기
+# tetra-rx -r : fragment reassembly, MTU를 재조립하는 것  켜기
+# tetra-rx -s : tries to dump unknown SDS protocols as text
+# tetra-rx -i : /dev/stdin=표준입력을 받는다
+
+demod/${GR_DIR}/simdemod2.py -o /dev/stdout -i $FIFO | ./tetra-rx -a -r -s -i /dev/stdin 

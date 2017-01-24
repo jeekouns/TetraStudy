@@ -24,37 +24,42 @@ except:
 
 # applies frequency translation, resampling and demodulation
 
+#GNU block 설계
 class top_block(gr.top_block):
   def __init__(self):
     gr.top_block.__init__(self, "Top Block")
 
     options = get_options()
+
+    #input
     self.input_file=options.input_file
+
+    #
     self.gr_file_source_0 = gr.file_source(gr.sizeof_gr_complex*1, self.input_file, True)
 
+    #symbol_rate는 18k
     symbol_rate = 18000
-    sps = 2 # output rate will be 36,000
+    sps = 2 # sample per symbol rate=2 -> output rate will be 36,000
     out_sample_rate = symbol_rate * sps
 
     options.low_pass = options.low_pass / 2.0
 
+    #핵심! demod블럭은 cqpsk의 cqpsk_demod블럭
     self.demod = cqpsk.cqpsk_demod(
-        samples_per_symbol = sps,
-        excess_bw=0.35,
-        costas_alpha=0.03,
-        gain_mu=0.05,
-        mu=0.05,
-        omega_relative_limit=0.05,
-        log=options.log,
-        verbose=options.verbose)
+        samples_per_symbol = sps,	#samples per symbol=2
+        excess_bw=0.35,			#
+        costas_alpha=0.03,		#
+        gain_mu=0.05,			#
+        mu=0.05,			#
+        omega_relative_limit=0.05,	#
+        log=options.log,		#
+        verbose=options.verbose)	#
 
+    #GNU Block의 output은 File로 출력
     self.output = gr.file_sink(gr.sizeof_float, options.output_file)
 
+    #File_source -> demod -> output block 연결
     self.connect(self.gr_file_source_0, self.demod, self.output)
-
-
-
-
 
 
 def get_options():
@@ -64,11 +69,14 @@ def get_options():
     parser.add_option("-l", "--log", action="store_true", default=False, help="dump debug .dat files")
     parser.add_option("-i", "--input-file", type="string", default="in.float", help="specify the bit input file")
     parser.add_option("-o", "--output-file", type="string", default="out.float", help="specify the bit output file")
+#-v옵션을 주면 demodulation data를 삭제하지 않음
     parser.add_option("-v", "--verbose", action="store_true", default=False, help="dump demodulation data")
+#low-pass 기본값은 25k <- Tetra Bandwidth
     parser.add_option("-L", "--low-pass", type="eng_float", default=25e3, help="low pass cut-off", metavar="Hz")
 
     (options, args) = parser.parse_args()
     if len(args) != 0:
+#option이 끝나고 나서 남은 args가 있다면 종료
         parser.print_help()
         raise SystemExit, 1
 
