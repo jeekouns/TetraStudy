@@ -180,6 +180,7 @@ class cqpsk_mod(gr.hier_block2):
 #                           CQPSK demodulator
 #
 # /////////////////////////////////////////////////////////////////////////////
+#pi/4 demod
 
 class cqpsk_demod(gr.hier_block2):
 
@@ -233,7 +234,8 @@ class cqpsk_demod(gr.hier_block2):
 
         if samples_per_symbol < 2:
             raise TypeError, "sbp must be >= 2, is %d" % samples_per_symbol
-
+	
+	#bits_per_symbol이 2이므로 arity=2^2=4
         arity = pow(2,self.bits_per_symbol())
  
         # Automatic gain control
